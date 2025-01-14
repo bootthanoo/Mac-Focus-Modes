@@ -314,37 +314,49 @@ get_focus_status() {
     log "Checking config file: $config_file"
     
     # Check if files exist and are readable
-    if [[ ! -f "$assertions_file" ]] || [[ ! -r "$assertions_file" ]]; then
-        error "Assertions file not found or not readable: $assertions_file"
+    if [[ ! -f "$assertions_file" ]]; then
+        error "Assertions file not found: $assertions_file"
         return 1
     fi
     
-    if [[ ! -f "$config_file" ]] || [[ ! -r "$config_file" ]]; then
-        error "Config file not found or not readable: $config_file"
+    if [[ ! -f "$config_file" ]]; then
+        error "Config file not found: $config_file"
+        return 1
+    fi
+    
+    if [[ ! -r "$assertions_file" ]]; then
+        error "Assertions file not readable: $assertions_file"
+        return 1
+    fi
+    
+    if [[ ! -r "$config_file" ]]; then
+        error "Config file not readable: $config_file"
         return 1
     fi
     
     # Debug: show file contents
-    log "Assertions file content:"
-    if ! "$JQ" '.' "$assertions_file" >&2; then
-        error "Failed to parse assertions file"
+    log "Reading assertions file..."
+    local assertions_content
+    if ! assertions_content=$("$JQ" '.' "$assertions_file" 2>&1); then
+        error "Failed to parse assertions file: $assertions_content"
         return 1
     fi
     
-    log "Config file content:"
-    if ! "$JQ" '.' "$config_file" >&2; then
-        error "Failed to parse config file"
+    log "Reading config file..."
+    local config_content
+    if ! config_content=$("$JQ" '.' "$config_file" 2>&1); then
+        error "Failed to parse config file: $config_content"
         return 1
     fi
     
     # Check for manual focus assertion
-    if assertion_records=$("$JQ" -r '.data[0].storeAssertionRecords' "$assertions_file" 2>/dev/null); then
+    if assertion_records=$(echo "$assertions_content" | "$JQ" -r '.data[0].storeAssertionRecords' 2>/dev/null); then
         if [[ "$assertion_records" != "null" && "$assertion_records" != "[]" ]]; then
             # Get mode identifier from assertions
-            mode_id=$("$JQ" -r '.data[0].storeAssertionRecords[0].assertionDetails.assertionDetailsModeIdentifier' "$assertions_file")
+            mode_id=$(echo "$assertions_content" | "$JQ" -r '.data[0].storeAssertionRecords[0].assertionDetails.assertionDetailsModeIdentifier')
             if [[ -n "$mode_id" && "$mode_id" != "null" ]]; then
                 # Get mode name from configurations
-                focus=$("$JQ" -r ".data[0].modeConfigurations[\"$mode_id\"].mode.name" "$config_file")
+                focus=$(echo "$config_content" | "$JQ" -r ".data[0].modeConfigurations[\"$mode_id\"].mode.name")
                 log "Found active focus mode: $focus"
             fi
         fi
