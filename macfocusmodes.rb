@@ -21,6 +21,8 @@ class Macfocusmodes < Formula
     working_dir HOMEBREW_PREFIX
     environment_variables PATH: std_service_path_env
     run_type :immediate
+    require_root false
+    process_type :background
   end
 
   def caveats
