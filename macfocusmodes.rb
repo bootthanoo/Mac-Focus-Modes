@@ -2,7 +2,7 @@ class Macfocusmodes < Formula
   desc "macOS Focus Modes manager that configures dock and wallpaper based on focus state"
   homepage "https://github.com/bootthanoo/Mac-Focus-Modes"
   url "https://github.com/bootthanoo/Mac-Focus-Modes/archive/refs/tags/v1.0.0.tar.gz"
-  sha256 "daf1ab18d7e734e9ac29811fc573d0826b23c602d2de7c9e07a4ae9c5814fe01"
+  sha256 "01516f861492adae9a81c6ded7de83d23c77b45adda28a32b382510b2d5f5922"
   license "MIT"
 
   depends_on "dockutil"
