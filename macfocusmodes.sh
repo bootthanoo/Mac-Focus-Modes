@@ -26,7 +26,7 @@ get_focus_mode() {
     if [[ ! -r "$config_file" ]]; then
         error "Config file not readable: $config_file"
         return 1
-    }
+    fi
     
     # Parse assertions file
     local mode_id
@@ -45,7 +45,7 @@ save_environment() {
     if [[ -z "$mode" ]]; then
         error "No mode specified for saving environment"
         return 1
-    }
+    fi
     
     echo "Saving current environment for focus mode: $mode"
     
@@ -79,7 +79,7 @@ configure_environment() {
     if [[ -z "$mode" ]]; then
         error "No mode specified for configuring environment"
         return 1
-    }
+    fi
     
     echo "Configuring environment for focus mode: $mode"
     
