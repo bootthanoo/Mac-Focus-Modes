@@ -16,9 +16,10 @@ class Macfocusmodes < Formula
   end
 
   service do
-    run [opt_bin/"macfocusmodes"]
+    run ["/bin/zsh", opt_bin/"macfocusmodes"]
     environment_variables PATH: std_service_path_env,
-                         HOME: ENV["HOME"]
+                         HOME: ENV["HOME"],
+                         SHELL: "/bin/zsh"
     require_root false
     keep_alive true
     process_type :background

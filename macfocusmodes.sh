@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/zsh
 
 # Focus Mode Monitor v13
 # For macOS Sonoma and later
