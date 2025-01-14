@@ -11,34 +11,15 @@ class Macfocusmodes < Formula
 
   def install
     bin.install "macfocusmodes.sh" => "macfocusmodes"
-    (prefix/"homebrew.mxcl.macfocusmodes.plist").write service_plist
   end
 
-  def service_plist
-    <<~EOS
-      <?xml version="1.0" encoding="UTF-8"?>
-      <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-      <plist version="1.0">
-      <dict>
-        <key>Label</key>
-        <string>#{plist_name}</string>
-        <key>ProgramArguments</key>
-        <array>
-          <string>#{opt_bin}/macfocusmodes</string>
-        </array>
-        <key>KeepAlive</key>
-        <true/>
-        <key>RunAtLoad</key>
-        <true/>
-        <key>StandardErrorPath</key>
-        <string>#{var}/log/macfocusmodes.log</string>
-        <key>StandardOutPath</key>
-        <string>#{var}/log/macfocusmodes.log</string>
-        <key>ProcessType</key>
-        <string>Background</string>
-      </dict>
-      </plist>
-    EOS
+  service do
+    run opt_bin/"macfocusmodes"
+    require_root false
+    keep_alive true
+    process_type :background
+    log_path var/"log/macfocusmodes.log"
+    error_log_path var/"log/macfocusmodes.log"
   end
 
   def caveats
