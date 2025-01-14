@@ -19,13 +19,16 @@ class Macfocusmodes < Formula
 
   service do
     run opt_bin/"macfocusmodes_wrapper"
-    environment_variables PATH: std_service_path_env,
+    environment_variables PATH: "#{HOMEBREW_PREFIX}/bin:#{ENV["PATH"]}",
                          HOME: ENV["HOME"],
-                         SHELL: "/bin/zsh"
+                         SHELL: "/bin/zsh",
+                         LANG: "en_US.UTF-8",
+                         LC_ALL: "en_US.UTF-8",
+                         USER: ENV["USER"]
     require_root false
     keep_alive true
     process_type :background
-    working_dir HOMEBREW_PREFIX
+    working_dir Dir.home
     log_path var/"log/macfocusmodes/macfocusmodes.log"
     error_log_path var/"log/macfocusmodes/macfocusmodes.log"
   end
