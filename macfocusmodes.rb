@@ -11,6 +11,9 @@ class Macfocusmodes < Formula
 
   def install
     bin.install "macfocusmodes.sh" => "macfocusmodes"
+    (var/"log").mkpath
+    touch "#{var}/log/macfocusmodes.log"
+    chmod 0644, "#{var}/log/macfocusmodes.log"
     (prefix/"homebrew.mxcl.macfocusmodes.plist").write service_plist
   end
 

@@ -5,16 +5,20 @@
 # Monitors Focus status and configures dock/wallpaper based on YAML configs
 
 # Set up logging
-LOG_DIR="/usr/local/var/log"
-LOG_FILE="$LOG_DIR/macfocusmodes.log"
+if [ -d "/opt/homebrew" ]; then
+    # Apple Silicon Mac
+    LOG_DIR="/opt/homebrew/var/log"
+else
+    # Intel Mac
+    LOG_DIR="/usr/local/var/log"
+fi
 
-# Create log directory if it doesn't exist
-mkdir -p "$LOG_DIR"
-touch "$LOG_FILE"
+LOG_FILE="$LOG_DIR/macfocusmodes.log"
 
 # Function to log messages with timestamps
 log() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
 }
 
 # Function to clean up on exit
