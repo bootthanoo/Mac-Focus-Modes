@@ -9,6 +9,12 @@ log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1"
 }
 
+# Error handling
+error() {
+    log "ERROR: $1"
+    return 1
+}
+
 log "Script starting with USER=$USER, HOME=$HOME"
 log "Current working directory: $(pwd)"
 
@@ -34,7 +40,7 @@ log "CONFIG_DIR set to: $CONFIG_DIR"
 log "SCRIPT_DIR set to: $SCRIPT_DIR"
 
 # Create config directory if it doesn't exist
-mkdir -p "$CONFIG_DIR"
+mkdir -p "$CONFIG_DIR" || error "Failed to create config directory"
 
 # Define paths to required commands
 YQ="$BREW_PREFIX/bin/yq"
@@ -55,17 +61,17 @@ trap cleanup SIGTERM SIGINT SIGHUP
 
 # Check for required dependencies with full paths
 if [ ! -x "$DOCKUTIL" ]; then
-    log "Error: dockutil not found at $DOCKUTIL"
+    error "dockutil not found at $DOCKUTIL"
     exit 1
 fi
 
 if [ ! -x "$YQ" ]; then
-    log "Error: yq not found at $YQ"
+    error "yq not found at $YQ"
     exit 1
 fi
 
 if [ ! -x "$JQ" ]; then
-    log "Error: jq not found at $JQ"
+    error "jq not found at $JQ"
     exit 1
 fi
 
@@ -295,13 +301,6 @@ check_environment_changes() {
     fi
 }
 
-echo "Starting Focus mode monitor service..."
-echo "Press Ctrl+C to exit"
-
-previous_mode=""
-current_wallpaper=""
-current_dock_hash=""
-
 # Function to get focus status with debug info
 get_focus_status() {
     # Default focus status
@@ -314,19 +313,29 @@ get_focus_status() {
     log "Checking assertions file: $assertions_file"
     log "Checking config file: $config_file"
     
-    # Check if files exist
-    if [[ ! -f "$assertions_file" ]] || [[ ! -f "$config_file" ]]; then
-        log "Error: Focus configuration files not found"
-        log "assertions_file exists: $([ -f "$assertions_file" ] && echo "yes" || echo "no")"
-        log "config_file exists: $([ -f "$config_file" ] && echo "yes" || echo "no")"
+    # Check if files exist and are readable
+    if [[ ! -f "$assertions_file" ]] || [[ ! -r "$assertions_file" ]]; then
+        error "Assertions file not found or not readable: $assertions_file"
+        return 1
+    fi
+    
+    if [[ ! -f "$config_file" ]] || [[ ! -r "$config_file" ]]; then
+        error "Config file not found or not readable: $config_file"
         return 1
     fi
     
     # Debug: show file contents
     log "Assertions file content:"
-    "$JQ" '.' "$assertions_file" >&2
+    if ! "$JQ" '.' "$assertions_file" >&2; then
+        error "Failed to parse assertions file"
+        return 1
+    fi
+    
     log "Config file content:"
-    "$JQ" '.' "$config_file" >&2
+    if ! "$JQ" '.' "$config_file" >&2; then
+        error "Failed to parse config file"
+        return 1
+    fi
     
     # Check for manual focus assertion
     if assertion_records=$("$JQ" -r '.data[0].storeAssertionRecords' "$assertions_file" 2>/dev/null); then
@@ -336,35 +345,8 @@ get_focus_status() {
             if [[ -n "$mode_id" && "$mode_id" != "null" ]]; then
                 # Get mode name from configurations
                 focus=$("$JQ" -r ".data[0].modeConfigurations[\"$mode_id\"].mode.name" "$config_file")
+                log "Found active focus mode: $focus"
             fi
-        else
-            # Check for scheduled focus
-            current_time=$(date +%H:%M)
-            hour=$(date +%H)
-            minute=$(date +%M)
-            current_minutes=$((hour * 60 + minute))
-            
-            # Parse configurations for scheduled focus
-            "$JQ" -r '.data[0].modeConfigurations | to_entries[] | select(.value.triggers.triggers[0].enabledSetting == 2)' "$config_file" | \
-            while IFS= read -r entry; do
-                start_hour=$(echo "$entry" | "$JQ" -r '.value.triggers.triggers[0].timePeriodStartTimeHour')
-                start_min=$(echo "$entry" | "$JQ" -r '.value.triggers.triggers[0].timePeriodStartTimeMinute')
-                end_hour=$(echo "$entry" | "$JQ" -r '.value.triggers.triggers[0].timePeriodEndTimeHour')
-                end_min=$(echo "$entry" | "$JQ" -r '.value.triggers.triggers[0].timePeriodEndTimeMinute')
-                
-                start_time=$((start_hour * 60 + start_min))
-                end_time=$((end_hour * 60 + end_min))
-                
-                if [[ $start_time -lt $end_time ]]; then
-                    if [[ $current_minutes -ge $start_time && $current_minutes -lt $end_time ]]; then
-                        focus=$(echo "$entry" | "$JQ" -r '.value.mode.name')
-                    fi
-                elif [[ $start_time -gt $end_time ]]; then
-                    if [[ $current_minutes -ge $start_time || $current_minutes -lt $end_time ]]; then
-                        focus=$(echo "$entry" | "$JQ" -r '.value.mode.name')
-                    fi
-                fi
-            done
         fi
     fi
     
@@ -374,12 +356,23 @@ get_focus_status() {
 # Main loop
 log "Starting Focus mode monitor service..."
 
+previous_mode=""
+current_wallpaper=""
+current_dock_hash=""
+
 while true; do
     current_mode=$(get_focus_status)
+    log "Current focus mode: $current_mode"
+    
+    if [[ $? -ne 0 ]]; then
+        log "Error getting focus status, waiting before retry..."
+        sleep 5
+        continue
+    fi
     
     # Only update when the mode changes
     if [[ "$current_mode" != "$previous_mode" ]]; then
-        log "Focus Mode changed to: $current_mode"
+        log "Focus Mode changed from '$previous_mode' to '$current_mode'"
         
         # Save current environment to the previous mode's config if it wasn't "No focus"
         if [[ "$previous_mode" != "" && "$previous_mode" != "No focus" ]]; then
@@ -397,17 +390,6 @@ while true; do
         fi
         
         previous_mode="$current_mode"
-    else
-        # Check for environment changes if we're in a focus mode
-        if [[ "$current_mode" != "No focus" ]]; then
-            # Get changes and read into variables
-            IFS=$'\n' read -r new_wallpaper new_dock_hash < <(check_environment_changes "$current_mode" "$current_wallpaper" "$current_dock_hash")
-            if [ -n "$new_wallpaper" ]; then
-                log "Environment changes detected and saved for mode: $current_mode"
-                current_wallpaper="$new_wallpaper"
-                current_dock_hash="$new_dock_hash"
-            fi
-        fi
     fi
     
     sleep 2
