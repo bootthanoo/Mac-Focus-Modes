@@ -12,17 +12,19 @@ class Macfocusmodes < Formula
   def install
     bin.install "macfocusmodes.sh" => "macfocusmodes"
     chmod 0755, bin/"macfocusmodes"
+    (var/"log/macfocusmodes").mkpath
   end
 
   service do
     run [opt_bin/"macfocusmodes"]
-    environment_variables PATH: std_service_path_env
+    environment_variables PATH: std_service_path_env,
+                         HOME: ENV["HOME"]
     require_root false
     keep_alive true
     process_type :background
     working_dir HOMEBREW_PREFIX
-    log_path var/"log/macfocusmodes.log"
-    error_log_path var/"log/macfocusmodes.log"
+    log_path var/"log/macfocusmodes/macfocusmodes.log"
+    error_log_path var/"log/macfocusmodes/macfocusmodes.log"
   end
 
   def caveats

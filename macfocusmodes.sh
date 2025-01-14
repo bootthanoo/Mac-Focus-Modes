@@ -8,7 +8,7 @@
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
 # Set up logging
-LOG_DIR="/opt/homebrew/var/log"
+LOG_DIR="/opt/homebrew/var/log/macfocusmodes"
 LOG_FILE="$LOG_DIR/macfocusmodes.log"
 
 # Create log directory if it doesn't exist
@@ -29,8 +29,9 @@ fi
 
 # Function to log messages with timestamps
 log() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1"
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    echo "$timestamp - $1" >> "$LOG_FILE"
+    echo "$timestamp - $1"
 }
 
 # Function to clean up on exit
