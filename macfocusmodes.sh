@@ -4,21 +4,16 @@
 # For macOS Sonoma and later
 # Monitors Focus status and configures dock/wallpaper based on YAML configs
 
-# Set up logging
-if [ -d "/opt/homebrew" ]; then
-    # Apple Silicon Mac
-    LOG_DIR="/opt/homebrew/var/log"
-else
-    # Intel Mac
-    LOG_DIR="/usr/local/var/log"
-fi
+# Set up environment
+CONFIG_DIR="$HOME/.config/macfocusmodes"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-LOG_FILE="$LOG_DIR/macfocusmodes.log"
+# Create config directory if it doesn't exist
+mkdir -p "$CONFIG_DIR"
 
 # Function to log messages with timestamps
 log() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1"
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
 }
 
 # Function to clean up on exit
@@ -30,59 +25,11 @@ cleanup() {
 # Set up signal handling
 trap cleanup SIGTERM SIGINT SIGHUP
 
-# Check if running with sudo
-if [ "$EUID" -eq 0 ]; then 
-    log "Error: Please do not run this script with sudo!"
-    log "Run it normally as: brew services start macfocusmodes"
-    exit 1
-fi
-
-# Function to handle errors
-handle_error() {
-    echo "Error: $1"
-    return 1
-}
-
-# Function to set up Homebrew
-setup_homebrew() {
-    # Check for Apple Silicon Mac Homebrew
-    if [ -f "/opt/homebrew/bin/brew" ]; then
-        eval "$(/opt/homebrew/bin/brew shellenv)"
-        return 0
-    fi
-    
-    # Check for Intel Mac Homebrew
-    if [ -f "/usr/local/bin/brew" ]; then
-        eval "$(/usr/local/bin/brew shellenv)"
-        return 0
-    fi
-    
-    if command -v brew >/dev/null 2>&1; then
-        eval "$(brew shellenv)"
-        return 0
-    fi
-    
-    echo "Error: Homebrew not found"
-    return 1
-}
-
-# Set up environment
-CONFIG_DIR="$HOME/.config/macfocusmodes"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-# Create config directory if it doesn't exist
-if [ ! -d "$CONFIG_DIR" ]; then
-    echo "Creating configuration directory at $CONFIG_DIR"
-    mkdir -p "$CONFIG_DIR"
-fi
-
-setup_homebrew || handle_error "Failed to set up Homebrew"
-
 # Check for required dependencies
 for cmd in dockutil yq jq; do
     if ! command -v $cmd &> /dev/null; then
-        echo "Error: $cmd is not installed"
-        echo "Install it using: brew install $cmd"
+        log "Error: $cmd is not installed"
+        log "Install it using: brew install $cmd"
         exit 1
     fi
 done
@@ -377,7 +324,7 @@ get_focus_status() {
     echo "$focus"
 }
 
-# Main loop modifications
+# Main loop
 log "Starting Focus mode monitor service..."
 
 while true; do
