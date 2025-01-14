@@ -4,12 +4,29 @@
 # For macOS Sonoma and later
 # Monitors Focus status and configures dock/wallpaper based on YAML configs
 
+# Set up Homebrew paths
+if [ -d "/opt/homebrew" ]; then
+    # Apple Silicon Mac
+    BREW_PREFIX="/opt/homebrew"
+else
+    # Intel Mac
+    BREW_PREFIX="/usr/local"
+fi
+
+# Set PATH to include Homebrew binaries
+export PATH="$BREW_PREFIX/bin:$PATH"
+
 # Set up environment
 CONFIG_DIR="$HOME/.config/macfocusmodes"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Create config directory if it doesn't exist
 mkdir -p "$CONFIG_DIR"
+
+# Define paths to required commands
+DOCKUTIL="$BREW_PREFIX/bin/dockutil"
+YQ="$BREW_PREFIX/bin/yq"
+JQ="$BREW_PREFIX/bin/jq"
 
 # Function to log messages with timestamps
 log() {
@@ -25,14 +42,21 @@ cleanup() {
 # Set up signal handling
 trap cleanup SIGTERM SIGINT SIGHUP
 
-# Check for required dependencies
-for cmd in dockutil yq jq; do
-    if ! command -v $cmd &> /dev/null; then
-        log "Error: $cmd is not installed"
-        log "Install it using: brew install $cmd"
-        exit 1
-    fi
-done
+# Check for required dependencies with full paths
+if [ ! -x "$DOCKUTIL" ]; then
+    log "Error: dockutil not found at $DOCKUTIL"
+    exit 1
+fi
+
+if [ ! -x "$YQ" ]; then
+    log "Error: yq not found at $YQ"
+    exit 1
+fi
+
+if [ ! -x "$JQ" ]; then
+    log "Error: jq not found at $JQ"
+    exit 1
+fi
 
 # Function to find wallpaper file
 find_wallpaper() {
@@ -72,10 +96,10 @@ get_current_wallpaper() {
 get_dock_apps() {
     # Print raw dock data to stderr for debugging
     echo "Debug: Raw dock data from dockutil:" >&2
-    dockutil --list >&2
+    "$DOCKUTIL" --list >&2
     
     # Process dock items for the YAML
-    dockutil --list | while read -r line; do
+    "$DOCKUTIL" --list | while read -r line; do
         # Skip empty lines
         [ -z "$line" ] && continue
         
@@ -267,6 +291,7 @@ previous_mode=""
 current_wallpaper=""
 current_dock_hash=""
 
+# Function to get focus status
 get_focus_status() {
     # Default focus status
     local focus="No focus"
@@ -282,13 +307,13 @@ get_focus_status() {
     fi
     
     # Check for manual focus assertion
-    if assertion_records=$(jq -r '.data[0].storeAssertionRecords' "$assertions_file" 2>/dev/null); then
+    if assertion_records=$("$JQ" -r '.data[0].storeAssertionRecords' "$assertions_file" 2>/dev/null); then
         if [[ "$assertion_records" != "null" && "$assertion_records" != "[]" ]]; then
             # Get mode identifier from assertions
-            mode_id=$(jq -r '.data[0].storeAssertionRecords[0].assertionDetails.assertionDetailsModeIdentifier' "$assertions_file")
+            mode_id=$("$JQ" -r '.data[0].storeAssertionRecords[0].assertionDetails.assertionDetailsModeIdentifier' "$assertions_file")
             if [[ -n "$mode_id" && "$mode_id" != "null" ]]; then
                 # Get mode name from configurations
-                focus=$(jq -r ".data[0].modeConfigurations[\"$mode_id\"].mode.name" "$config_file")
+                focus=$("$JQ" -r ".data[0].modeConfigurations[\"$mode_id\"].mode.name" "$config_file")
             fi
         else
             # Check for scheduled focus
@@ -298,23 +323,23 @@ get_focus_status() {
             current_minutes=$((hour * 60 + minute))
             
             # Parse configurations for scheduled focus
-            jq -r '.data[0].modeConfigurations | to_entries[] | select(.value.triggers.triggers[0].enabledSetting == 2)' "$config_file" | \
+            "$JQ" -r '.data[0].modeConfigurations | to_entries[] | select(.value.triggers.triggers[0].enabledSetting == 2)' "$config_file" | \
             while IFS= read -r entry; do
-                start_hour=$(echo "$entry" | jq -r '.value.triggers.triggers[0].timePeriodStartTimeHour')
-                start_min=$(echo "$entry" | jq -r '.value.triggers.triggers[0].timePeriodStartTimeMinute')
-                end_hour=$(echo "$entry" | jq -r '.value.triggers.triggers[0].timePeriodEndTimeHour')
-                end_min=$(echo "$entry" | jq -r '.value.triggers.triggers[0].timePeriodEndTimeMinute')
+                start_hour=$(echo "$entry" | "$JQ" -r '.value.triggers.triggers[0].timePeriodStartTimeHour')
+                start_min=$(echo "$entry" | "$JQ" -r '.value.triggers.triggers[0].timePeriodStartTimeMinute')
+                end_hour=$(echo "$entry" | "$JQ" -r '.value.triggers.triggers[0].timePeriodEndTimeHour')
+                end_min=$(echo "$entry" | "$JQ" -r '.value.triggers.triggers[0].timePeriodEndTimeMinute')
                 
                 start_time=$((start_hour * 60 + start_min))
                 end_time=$((end_hour * 60 + end_min))
                 
                 if [[ $start_time -lt $end_time ]]; then
                     if [[ $current_minutes -ge $start_time && $current_minutes -lt $end_time ]]; then
-                        focus=$(echo "$entry" | jq -r '.value.mode.name')
+                        focus=$(echo "$entry" | "$JQ" -r '.value.mode.name')
                     fi
                 elif [[ $start_time -gt $end_time ]]; then
                     if [[ $current_minutes -ge $start_time || $current_minutes -lt $end_time ]]; then
-                        focus=$(echo "$entry" | jq -r '.value.mode.name')
+                        focus=$(echo "$entry" | "$JQ" -r '.value.mode.name')
                     fi
                 fi
             done
