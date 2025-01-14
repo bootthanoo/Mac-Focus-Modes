@@ -11,12 +11,14 @@ class Macfocusmodes < Formula
 
   def install
     bin.install "macfocusmodes.sh" => "macfocusmodes"
+    bin.install "macfocusmodes_wrapper.sh" => "macfocusmodes_wrapper"
     chmod 0755, bin/"macfocusmodes"
+    chmod 0755, bin/"macfocusmodes_wrapper"
     (var/"log/macfocusmodes").mkpath
   end
 
   service do
-    run ["/bin/zsh", opt_bin/"macfocusmodes"]
+    run opt_bin/"macfocusmodes_wrapper"
     environment_variables PATH: std_service_path_env,
                          HOME: ENV["HOME"],
                          SHELL: "/bin/zsh"
