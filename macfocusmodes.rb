@@ -1,28 +1,25 @@
 class Macfocusmodes < Formula
-  desc "macOS Focus Modes manager that configures dock and wallpaper based on focus state"
+  desc "Automatically configure your Mac's environment based on Focus modes"
   homepage "https://github.com/bootthanoo/Mac-Focus-Modes"
-  url "https://github.com/bootthanoo/Mac-Focus-Modes/archive/refs/tags/v1.0.0.tar.gz"
-  sha256 "4a531e617357c0e2c891e513312c8b6ad78566963937e28e308eab0d5ceaef6e"
+  url "https://github.com/bootthanoo/Mac-Focus-Modes/archive/refs/tags/v1.0.1.tar.gz"
+  sha256 "406ebf5cc9f7f0f30a22e22a307506fcac04f41d15cf2fb123fb07b30387a5a9"
   license "MIT"
 
   depends_on "dockutil"
-  depends_on "yq"
   depends_on "jq"
+  depends_on "yq"
 
   def install
     bin.install "macfocusmodes.sh" => "macfocusmodes"
   end
 
   service do
+    require_root false
+    process_type :background
     run [opt_bin/"macfocusmodes"]
     keep_alive true
     log_path var/"log/macfocusmodes.log"
     error_log_path var/"log/macfocusmodes.log"
-    working_dir HOMEBREW_PREFIX
-    environment_variables PATH: std_service_path_env
-    run_type :immediate
-    require_root false
-    process_type :background
   end
 
   def caveats
