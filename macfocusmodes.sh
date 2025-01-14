@@ -8,9 +8,11 @@
 if [ -d "/opt/homebrew" ]; then
     # Apple Silicon Mac
     BREW_PREFIX="/opt/homebrew"
+    DOCKUTIL="/opt/homebrew/Cellar/dockutil/3.1.3/bin/dockutil"
 else
     # Intel Mac
     BREW_PREFIX="/usr/local"
+    DOCKUTIL="/usr/local/Cellar/dockutil/3.1.3/bin/dockutil"
 fi
 
 # Set PATH to include Homebrew binaries
@@ -24,7 +26,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 mkdir -p "$CONFIG_DIR"
 
 # Define paths to required commands
-DOCKUTIL="$BREW_PREFIX/bin/dockutil"
 YQ="$BREW_PREFIX/bin/yq"
 JQ="$BREW_PREFIX/bin/jq"
 
