@@ -4,17 +4,33 @@
 # For macOS Sonoma and later
 # Monitors Focus status and configures dock/wallpaper based on YAML configs
 
+# Ensure we have the right PATH for Homebrew
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+
 # Set up logging
-LOG_DIR="/usr/local/var/log"
+LOG_DIR="/opt/homebrew/var/log"
 LOG_FILE="$LOG_DIR/macfocusmodes.log"
 
 # Create log directory if it doesn't exist
-mkdir -p "$LOG_DIR"
-touch "$LOG_FILE"
+if [ ! -d "$LOG_DIR" ]; then
+    mkdir -p "$LOG_DIR" || {
+        LOG_DIR="$HOME/.local/var/log/macfocusmodes"
+        mkdir -p "$LOG_DIR"
+    }
+fi
+
+if [ ! -f "$LOG_FILE" ]; then
+    touch "$LOG_FILE" || {
+        LOG_FILE="$HOME/.local/var/log/macfocusmodes/macfocusmodes.log"
+        mkdir -p "$(dirname "$LOG_FILE")"
+        touch "$LOG_FILE"
+    }
+fi
 
 # Function to log messages with timestamps
 log() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$LOG_FILE"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$LOG_FILE"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1"
 }
 
 # Function to clean up on exit
