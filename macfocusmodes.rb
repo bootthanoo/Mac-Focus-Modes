@@ -14,10 +14,13 @@ class Macfocusmodes < Formula
   end
 
   service do
-    run opt_bin/"macfocusmodes"
+    run [opt_bin/"macfocusmodes"]
     keep_alive true
     log_path var/"log/macfocusmodes.log"
     error_log_path var/"log/macfocusmodes.log"
+    working_dir HOMEBREW_PREFIX
+    environment_variables PATH: std_service_path_env
+    run_type :immediate
   end
 
   def caveats

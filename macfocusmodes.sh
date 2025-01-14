@@ -4,6 +4,14 @@
 # For macOS Sonoma and later
 # Monitors Focus status and configures dock/wallpaper based on YAML configs
 
+# Debug information
+log() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1"
+}
+
+log "Script starting with USER=$USER, HOME=$HOME"
+log "Current working directory: $(pwd)"
+
 # Set up Homebrew paths
 if [ -d "/opt/homebrew" ]; then
     # Apple Silicon Mac
@@ -17,10 +25,13 @@ fi
 
 # Set PATH to include Homebrew binaries
 export PATH="$BREW_PREFIX/bin:$PATH"
+log "PATH set to: $PATH"
 
 # Set up environment
 CONFIG_DIR="$HOME/.config/macfocusmodes"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+log "CONFIG_DIR set to: $CONFIG_DIR"
+log "SCRIPT_DIR set to: $SCRIPT_DIR"
 
 # Create config directory if it doesn't exist
 mkdir -p "$CONFIG_DIR"
@@ -29,10 +40,9 @@ mkdir -p "$CONFIG_DIR"
 YQ="$BREW_PREFIX/bin/yq"
 JQ="$BREW_PREFIX/bin/jq"
 
-# Function to log messages with timestamps
-log() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1"
-}
+log "Using DOCKUTIL at: $DOCKUTIL"
+log "Using YQ at: $YQ"
+log "Using JQ at: $JQ"
 
 # Function to clean up on exit
 cleanup() {
@@ -292,7 +302,7 @@ previous_mode=""
 current_wallpaper=""
 current_dock_hash=""
 
-# Function to get focus status
+# Function to get focus status with debug info
 get_focus_status() {
     # Default focus status
     local focus="No focus"
@@ -301,11 +311,22 @@ get_focus_status() {
     local assertions_file="$HOME/Library/DoNotDisturb/DB/Assertions.json"
     local config_file="$HOME/Library/DoNotDisturb/DB/ModeConfigurations.json"
     
+    log "Checking assertions file: $assertions_file"
+    log "Checking config file: $config_file"
+    
     # Check if files exist
     if [[ ! -f "$assertions_file" ]] || [[ ! -f "$config_file" ]]; then
-        echo "Error: Focus configuration files not found"
+        log "Error: Focus configuration files not found"
+        log "assertions_file exists: $([ -f "$assertions_file" ] && echo "yes" || echo "no")"
+        log "config_file exists: $([ -f "$config_file" ] && echo "yes" || echo "no")"
         return 1
     fi
+    
+    # Debug: show file contents
+    log "Assertions file content:"
+    "$JQ" '.' "$assertions_file" >&2
+    log "Config file content:"
+    "$JQ" '.' "$config_file" >&2
     
     # Check for manual focus assertion
     if assertion_records=$("$JQ" -r '.data[0].storeAssertionRecords' "$assertions_file" 2>/dev/null); then
